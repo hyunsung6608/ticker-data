@@ -1,0 +1,11 @@
+# DB 파일 (Artifacts로 관리)
+ticker_data.db
+*.db
+
+# 토큰 캐시
+.token_cache.json
+
+# Python
+__pycache__/
+*.pyc
+.env
