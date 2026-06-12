@@ -29,4 +29,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           COLLECT_DURATION: "21600"
+          PYTHONUNBUFFERED: "1"
         run: python main.py
