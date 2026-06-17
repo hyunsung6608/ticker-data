@@ -2,7 +2,7 @@ name: KIS Data Collector
 
 on:
   schedule:
-    - cron: "30 21 * * 0-4"  # KST 06:30 시작 (지연 고려)
+    - cron: "00 22 * * 0-4"  # KST 07:00 시작 (지연 고려)
   workflow_dispatch:
 
 jobs:
