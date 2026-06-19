@@ -53,9 +53,13 @@ def upsert_candle_1m(code: str, ts: datetime, o: int, h: int, l: int, c: int, v:
 
 def get_tick_count(code: str = None) -> int:
     """저장된 틱 수 확인"""
-    client = get_client()
-    if code:
-        res = client.table("ticks").select("id", count="exact").eq("code", code).execute()
-    else:
-        res = client.table("ticks").select("id", count="exact").execute()
-    return res.count or 0
+    try:
+        client = get_client()
+        if code:
+            res = client.table("ticks").select("id", count="estimated").eq("code", code).execute()
+        else:
+            res = client.table("ticks").select("id", count="estimated").execute()
+        return res.count or 0
+    except Exception as e:
+        print(f"[Supabase] 틱 카운트 조회 실패 (무시하고 진행): {e}")
+        return -1
