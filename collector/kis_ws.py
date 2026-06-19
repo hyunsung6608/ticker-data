@@ -1,10 +1,10 @@
-# collector/kis_ws.py
 import asyncio
 import json
 import websockets
 from collector.parser import parse_tick
-from storage.supabase_db import insert_ticks_batch, upsert_candle_1m
+from storage.supabase_db import insert_ticks_batch, upsert_candle_1m, insert_anomaly
 from config import WS_URL
+from collector.anomaly import check_anomaly
 
 # 1분봉 집계 버퍼
 _candle_buf = {}
@@ -106,6 +106,14 @@ async def collect(approval_key: str, codes: list):
                 tick = parse_tick(fields)
                 if tick:
                     print(f"[틱] {tick['code']} {tick['price']:,}원 vol:{tick['volume']}")
+
+                    for a in check_anomaly(tick):
+                        if a["type"] == "price":
+                            print(f"[이상치] {a['code']} 가격 급변동 z={a['z']} (현재가 {a['value']:,}원)")
+                        else:
+                            print(f"[이상치] {a['code']} 거래량 급증 z={a['z']} (체결량 {a['value']:,})")
+                        insert_anomaly(a)
+                        
                     _tick_buf.append(tick)
                     _update_candle(tick)
 

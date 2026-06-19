@@ -63,3 +63,22 @@ def get_tick_count(code: str = None) -> int:
     except Exception as e:
         print(f"[Supabase] 틱 카운트 조회 실패 (무시하고 진행): {e}")
         return -1
+    
+def get_ticks(code: str = None, limit: int = 1000) -> list:
+    """저장된 틱 조회 (오래된 순)"""
+    client = get_client()
+    query = client.table("ticks").select("*")
+    if code:
+        query = query.eq("code", code)
+    query = query.order("timestamp", desc=False).limit(limit)
+    res = query.execute()
+    return res.data
+
+def insert_anomaly(anomaly: dict):
+    """이상치 1건 저장"""
+    get_client().table("anomalies").insert({
+        "code":  anomaly["code"],
+        "type":  anomaly["type"],
+        "value": anomaly["value"],
+        "z":     anomaly["z"],
+    }).execute()
