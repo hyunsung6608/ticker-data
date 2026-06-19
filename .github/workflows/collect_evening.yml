@@ -1,0 +1,34 @@
+name: KIS Data Collector (애프터마켓/NXT)
+
+on:
+  schedule:
+    - cron: "30 5 * * 1-5"  # KST 14:30 시작 (지연 고려)
+  workflow_dispatch:
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 320
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: pip install -r requirements.txt
+
+      - name: 데이터 수집 실행
+        env:
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SESSION_MODE: "nxt"
+          COLLECT_END_TIME: "20:05"
+          PYTHONUNBUFFERED: "1"
+        run: python main.py

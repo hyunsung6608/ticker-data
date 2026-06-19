@@ -48,7 +48,7 @@ def _update_candle(tick: dict):
         buf["v"] += tick["volume"]
 
 
-def _subscribe_msg(approval_key: str, code: str) -> str:
+def _subscribe_msg(approval_key: str, code: str, tr_id: str) -> str:
     return json.dumps({
         "header": {
             "approval_key": approval_key,
@@ -58,23 +58,26 @@ def _subscribe_msg(approval_key: str, code: str) -> str:
         },
         "body": {
             "input": {
-                "tr_id": "H0STCNT0",
+                "tr_id": tr_id,
                 "tr_key": code,
             }
         },
     })
 
 
-async def collect(approval_key: str, codes: list):
+async def collect(approval_key: str, codes: list, session_mode: str = "krx"):
     global _tick_buf
+
+    tr_ids = ["H0STCNT0"] if session_mode == "krx" else ["H0STOUP0", "H0NXCNT0"]
 
     print(f"[WS] 연결 중: {WS_URL}")
     async with websockets.connect(WS_URL, ping_interval=20) as ws:
-        print(f"[WS] 연결 완료, {len(codes)}종목 구독 시작")
+        print(f"[WS] 연결 완료, {len(codes)}종목 구독 시작 (모드: {session_mode})")
 
         for code in codes:
-            await ws.send(_subscribe_msg(approval_key, code))
-            await asyncio.sleep(0.1)
+            for tr_id in tr_ids:
+                await ws.send(_subscribe_msg(approval_key, code, tr_id))
+                await asyncio.sleep(0.1)
 
         print(f"[WS] 구독 완료: {codes}")
 
@@ -101,7 +104,7 @@ async def collect(approval_key: str, codes: list):
                 await ws.send("PINGPONG")
                 continue
 
-            if tr_id == "H0STCNT0":
+            if tr_id in ("H0STCNT0", "H0STOUP0", "H0NXCNT0"):
                 fields = parts[3].split("^")
                 tick = parse_tick(fields)
                 if tick:

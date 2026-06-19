@@ -1,14 +1,14 @@
-name: KIS Data Collector
+name: KIS Data Collector (오전)
 
 on:
   schedule:
-    - cron: "00 22 * * 0-4"  # KST 07:00 시작 (지연 고려)
+    - cron: "10 21 * * 0-4"  # KST 06:10 시작 (지연 고려)
   workflow_dispatch:
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 375
+    timeout-minutes: 345
 
     steps:
       - name: Checkout
@@ -28,6 +28,6 @@ jobs:
           KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          COLLECT_DURATION: "21600"
+          COLLECT_END_TIME: "11:40"
           PYTHONUNBUFFERED: "1"
         run: python main.py
