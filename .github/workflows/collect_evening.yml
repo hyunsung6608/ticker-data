@@ -2,7 +2,7 @@ name: KIS Data Collector (애프터마켓/NXT)
 
 on:
   schedule:
-    - cron: "15 8 * * 1-5"  # 테스트용 (KST 17:15)
+    - cron: "00 6 * * 1-5"  # KST 15:00 시작
   workflow_dispatch:
 
 jobs:
