@@ -1,4 +1,4 @@
-# collector/kis_auth.py
+import time
 import requests
 import json
 import os
@@ -45,8 +45,17 @@ def get_access_token():
         "appkey": APP_KEY,
         "appsecret": APP_SECRET,
     }
-    resp = requests.post(url, json=body)
-    resp.raise_for_status()
+    for attempt in range(5):
+        try:
+            resp = requests.post(url, json=body, timeout=10)
+            resp.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            wait = 5 * (2 ** attempt)
+            print(f"[Auth] 토큰 발급 시도 {attempt+1}/5 실패: {e} → {wait}초 후 재시도")
+            if attempt == 4:
+                raise
+            time.sleep(wait)
     data = resp.json()
 
     token = data["access_token"]
@@ -66,8 +75,17 @@ def get_approval_key(access_token):
         "appkey": APP_KEY,
         "secretkey": APP_SECRET,
     }
-    resp = requests.post(url, headers=headers, json=body)
-    resp.raise_for_status()
+    for attempt in range(5):
+        try:
+            resp = requests.post(url, headers=headers, json=body, timeout=10)
+            resp.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            wait = 5 * (2 ** attempt)
+            print(f"[Auth] 접속키 발급 시도 {attempt+1}/5 실패: {e} → {wait}초 후 재시도")
+            if attempt == 4:
+                raise
+            time.sleep(wait)
     data = resp.json()
     approval_key = data.get("approval_key")
     print(f"[Auth] 접속키 발급 완료")
