@@ -115,7 +115,10 @@ async def collect(approval_key: str, codes: list, session_mode: str = "krx"):
                             print(f"[이상치] {a['code']} 가격 급변동 z={a['z']} (현재가 {a['value']:,}원)")
                         else:
                             print(f"[이상치] {a['code']} 거래량 급증 z={a['z']} (체결량 {a['value']:,})")
-                        insert_anomaly(a)
+                        try:
+                            insert_anomaly(a)
+                        except Exception as e:
+                            print(f"[경고] 이상치 저장 실패: {e}")
                         
                     _tick_buf.append(tick)
                     _update_candle(tick)
