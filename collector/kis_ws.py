@@ -47,6 +47,16 @@ def _update_candle(tick: dict):
         buf["c"] = tick["price"]
         buf["v"] += tick["volume"]
 
+FLUSH_INTERVAL = 10  # 초 단위, 이 시간마다 버퍼를 강제로 비움
+
+async def _periodic_flush():
+    global _tick_buf
+    while True:
+        await asyncio.sleep(FLUSH_INTERVAL)
+        if _tick_buf:
+            insert_ticks_batch(_tick_buf)
+            print(f"[Supabase] 주기 flush: {len(_tick_buf)}건 저장")
+            _tick_buf = []
 
 def _subscribe_msg(approval_key: str, code: str, tr_id: str) -> str:
     return json.dumps({
@@ -81,53 +91,61 @@ async def collect(approval_key: str, codes: list, session_mode: str = "krx"):
 
         print(f"[WS] 구독 완료: {codes}")
 
-        async for message in ws:
-            raw = message if isinstance(message, str) else message.decode()
+        flush_task = asyncio.create_task(_periodic_flush())
 
-            if raw == "PINGPONG":
-                await ws.send("PINGPONG")
-                continue
-            if raw.startswith("{"):
-                try:
-                    msg = json.loads(raw)
-                    if msg.get("header", {}).get("tr_id") == "PINGPONG":
-                        await ws.send(json.dumps({"header": {"tr_id": "PINGPONG"}}))
-                except Exception:
-                    pass
-                continue
+        try:
+            async for message in ws:
+                raw = message if isinstance(message, str) else message.decode()
 
-            parts = raw.split("|")
-            if len(parts) < 4:
-                continue
-            tr_id = parts[1]
-            if tr_id == "PINGPONG":
-                await ws.send("PINGPONG")
-                continue
+                if raw == "PINGPONG":
+                    await ws.send("PINGPONG")
+                    continue
+                if raw.startswith("{"):
+                    try:
+                        msg = json.loads(raw)
+                        if msg.get("header", {}).get("tr_id") == "PINGPONG":
+                            await ws.send(json.dumps({"header": {"tr_id": "PINGPONG"}}))
+                    except Exception:
+                        pass
+                    continue
 
-            if tr_id in ("H0STCNT0", "H0STOUP0", "H0NXCNT0"):
-                fields = parts[3].split("^")
-                tick = parse_tick(fields)
-                if tick:
-                    print(f"[틱] {tick['code']} {tick['price']:,}원 vol:{tick['volume']}")
+                parts = raw.split("|")
+                if len(parts) < 4:
+                    continue
+                tr_id = parts[1]
+                if tr_id == "PINGPONG":
+                    await ws.send("PINGPONG")
+                    continue
 
-                    for a in check_anomaly(tick):
-                        if a["type"] == "price":
-                            print(f"[이상치] {a['code']} 가격 급변동 z={a['z']} (현재가 {a['value']:,}원)")
-                        else:
-                            print(f"[이상치] {a['code']} 거래량 급증 z={a['z']} (체결량 {a['value']:,})")
-                        try:
-                            insert_anomaly(a)
-                        except Exception as e:
-                            print(f"[경고] 이상치 저장 실패: {e}")
-                        
-                    _tick_buf.append(tick)
-                    _update_candle(tick)
+                if tr_id in ("H0STCNT0", "H0STOUP0", "H0NXCNT0"):
+                    fields = parts[3].split("^")
+                    tick = parse_tick(fields)
+                    if tick:
+                        print(f"[틱] {tick['code']} {tick['price']:,}원 vol:{tick['volume']}")
 
-                    if len(_tick_buf) >= BATCH_SIZE:
-                        insert_ticks_batch(_tick_buf)
-                        print(f"[Supabase] {len(_tick_buf)}건 저장")
-                        _tick_buf = []
+                        for a in check_anomaly(tick):
+                            if a["type"] == "price":
+                                print(f"[이상치] {a['code']} 가격 급변동 z={a['z']} (현재가 {a['value']:,}원)")
+                            else:
+                                print(f"[이상치] {a['code']} 거래량 급증 z={a['z']} (체결량 {a['value']:,})")
+                            try:
+                                insert_anomaly(a)
+                            except Exception as e:
+                                print(f"[경고] 이상치 저장 실패: {e}")
 
+                        _tick_buf.append(tick)
+                        _update_candle(tick)
+
+                        if len(_tick_buf) >= BATCH_SIZE:
+                            insert_ticks_batch(_tick_buf)
+                            print(f"[Supabase] {len(_tick_buf)}건 저장")
+                            _tick_buf = []
+        finally:
+            flush_task.cancel()
+            try:
+                await flush_task
+            except asyncio.CancelledError:
+                pass
 
 async def flush_remaining():
     if _tick_buf:
