@@ -2,7 +2,7 @@ name: KIS Data Collector (오후)
 
 on:
   schedule:
-    - cron: "30 0 * * 1-5"  # KST 9:30 시작 (지연 고려)
+    - cron: "00 0 * * 1-5"  # KST 9:00 시작 (지연 고려)
   workflow_dispatch:
 
 concurrency:
